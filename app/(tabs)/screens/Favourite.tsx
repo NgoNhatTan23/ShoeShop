@@ -15,21 +15,23 @@ type FavouriteProps = {
   route: {
     params: {
       favourites: Service[];
+      removeFavourite: (id: string) => void;
     };
   };
 };
 
 const Favourite: React.FC<FavouriteProps> = ({ route }) => {
-  const { favourites: initialFavourites } = route.params;
+  const { favourites: initialFavourites, removeFavourite } = route.params;
   const [favourites, setFavourites] = useState<Service[]>(initialFavourites);
   const navigation = useNavigation();
 
-  const removeFavourite = (id: string) => {
-    setFavourites((prevFavourites) => prevFavourites.filter(item => item.id !== id));
-  };
-
   const navigateToDetail = (service: Service) => {
     navigation.navigate('DetailScreen', { service });
+  };
+
+  const handleRemoveFavourite = (id: string) => {
+    removeFavourite(id);  // Gọi hàm xóa từ props
+    setFavourites(prevFavourites => prevFavourites.filter(item => item.id !== id)); // Cập nhật danh sách yêu thích
   };
 
   const renderItem = ({ item }: { item: Service }) => (
@@ -40,7 +42,7 @@ const Favourite: React.FC<FavouriteProps> = ({ route }) => {
           <Text style={styles.itemName}>{item.ServiceName}</Text>
           <Text style={styles.itemPrice}>{item.Price} ₫</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.removeButton} onPress={() => removeFavourite(item.id)}>
+        <TouchableOpacity style={styles.removeButton} onPress={() => handleRemoveFavourite(item.id)}>
           <Icon name="favorite" size={24} color="#ff3d00" />
         </TouchableOpacity>
       </View>

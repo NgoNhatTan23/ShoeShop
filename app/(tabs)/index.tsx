@@ -14,6 +14,7 @@ import ChangePasswordScreen from './screens/ChangePassword';
 import Favourite from './screens/Favourite';
 import CheckoutScreen from './screens/checkout'; // Import CheckoutScreen
 import Cart from './screens/Cart';
+import EditProfileScreen from './screens/EditProfileScreen';
 const Stack = createStackNavigator();
 
 const App = () => {
@@ -33,6 +34,7 @@ const App = () => {
         <Stack.Screen name="Favourite" component={Favourite} />
         <Stack.Screen name="CheckoutScreen" component={CheckoutScreen} options={{ title: 'Đặt hàng' }} />
         <Stack.Screen name="Cart" component={Cart} />
+        <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
         
       </Stack.Navigator>
     </NavigationContainer>

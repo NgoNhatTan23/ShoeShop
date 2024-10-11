@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Image, Modal } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  TextInput, 
+  Image, 
+  Modal, 
+  SafeAreaView 
+} from 'react-native';
 import { FIRESTORE_DB } from '../firebaseConfig';
 import { collection, getDocs } from 'firebase/firestore';
 import CartScreen from './Cart';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Toast from 'react-native-toast-message';
-import CheckoutScreen from './checkout';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import EditProfileScreen from './EditProfileScreen';
 
 type Service = {
   id: string;
@@ -13,6 +25,7 @@ type Service = {
   Price: number;
   ServiceName: string;
   ImageUrl: string;
+  Description: string; // Thêm mô tả cho dịch vụ
 };
 
 const CustomerListService = ({ navigation }: any) => {
@@ -23,7 +36,8 @@ const CustomerListService = ({ navigation }: any) => {
   const [cart, setCart] = useState<Service[]>([]);
   const [isCartVisible, setCartVisible] = useState(false);
   const [favourites, setFavourites] = useState<Service[]>([]);
-  const [isSidebarVisible, setSidebarVisible] = useState(false); // Trạng thái cho sidebar
+  const [isSidebarVisible, setSidebarVisible] = useState(false);
+  const [userData, setUserData] = useState<{ phone: string; avatarUrl: string }>({ phone: '', avatarUrl: '' });
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -45,6 +59,16 @@ const CustomerListService = ({ navigation }: any) => {
     fetchServices();
   }, []);
 
+  useEffect(() => {
+    const loadUserData = async () => {
+      const storedData = await AsyncStorage.getItem('userData');
+      if (storedData) {
+        setUserData(JSON.parse(storedData));
+      }
+    };
+    loadUserData();
+  }, []);
+
   const handleSearch = (text: string) => {
     setSearchText(text);
     if (text) {
@@ -62,7 +86,7 @@ const CustomerListService = ({ navigation }: any) => {
     navigation.navigate('CheckoutScreen', {
       cartItems: cart,
       totalAmount,
-      onPaymentConfirmed: () => setCart([]), // Xóa giỏ hàng sau khi thanh toán
+      onPaymentConfirmed: () => setCart([]),
     });
     setCartVisible(false);
   };
@@ -77,8 +101,9 @@ const CustomerListService = ({ navigation }: any) => {
         type: 'success',
       });
     } else {
+      removeFavourite(service.id);
       Toast.show({
-        text1: 'Sản phẩm đã có trong danh sách yêu thích!',
+        text1: 'Đã xóa khỏi danh sách yêu thích!',
         visibilityTime: 2000,
         position: 'bottom',
         type: 'info',
@@ -86,29 +111,37 @@ const CustomerListService = ({ navigation }: any) => {
     }
   };
 
-  const renderItem = ({ item }: { item: Service }) => (
-    <View style={styles.itemContainer}>
-      <TouchableOpacity
-        style={styles.item}
-        onPress={() => navigation.navigate('DetailScreen', { service: item, cart, setCart })}
-        activeOpacity={0.7}
-      >
+  const removeFavourite = (id: string) => {
+    setFavourites(prevFavourites => prevFavourites.filter(item => item.id !== id));
+  };
+
+  const renderItem = ({ item }: { item: Service }) => {
+    const isFavourite = favourites.some(fav => fav.id === item.id);
+
+    return (
+      <View style={styles.itemContainer}>
         <TouchableOpacity
-          style={styles.heartIconContainer}
-          onPress={() => handleAddToFavourites(item)}
+          style={styles.item}
+          onPress={() => navigation.navigate('DetailScreen', { service: item, cart, setCart })}
+          activeOpacity={0.7}
         >
-          <Icon name="favorite-border" size={24} color="#ff3d00" />
+          <TouchableOpacity
+            style={styles.heartIconContainer}
+            onPress={() => handleAddToFavourites(item)}
+          >
+            <Icon name={isFavourite ? "favorite" : "favorite-border"} size={24} color={isFavourite ? "#ff3d00" : "#ccc"} />
+          </TouchableOpacity>
+          <Image source={{ uri: item.ImageUrl }} style={styles.itemImage} />
+          <View style={styles.itemDetails}>
+            <Text style={styles.itemName} numberOfLines={2}>
+              {item.ServiceName}
+            </Text>
+            <Text style={styles.itemPrice}>{item.Price} ₫</Text>
+          </View>
         </TouchableOpacity>
-        <Image source={{ uri: item.ImageUrl }} style={styles.itemImage} />
-        <View style={styles.itemDetails}>
-          <Text style={styles.itemName} numberOfLines={2}>
-            {item.ServiceName}
-          </Text>
-          <Text style={styles.itemPrice}>{item.Price} ₫</Text>
-        </View>
-      </TouchableOpacity>
-    </View>
-  );
+      </View>
+    );
+  };
 
   const groupedServices = filteredServices.reduce<Service[][]>((acc, service, index) => {
     if (index % 2 === 0) {
@@ -120,13 +153,14 @@ const CustomerListService = ({ navigation }: any) => {
   }, []);
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#000" style={{ flex: 1, justifyContent: 'center' }} />;
+    return <ActivityIndicator size="large" color="#000" style={styles.loadingIndicator} />;
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.logo}>KAMI SPA</Text>
+        <Image source={{ uri: userData.avatarUrl || '' }} style={styles.avatar} />
+        <Text style={styles.logo}>Bumblebee</Text>
         <TouchableOpacity onPress={() => setSidebarVisible(true)}>
           <Icon name="menu" size={24} color="#fff" />
         </TouchableOpacity>
@@ -157,11 +191,14 @@ const CustomerListService = ({ navigation }: any) => {
         <TouchableOpacity onPress={() => navigation.navigate('Home')}>
           <Icon name="home" size={24} color="#fff" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Favourite', { favourites })}>
+        <TouchableOpacity onPress={() => navigation.navigate('Favourite', { favourites, removeFavourite })}>
           <Icon name="favorite" size={24} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.navigate('SettingsScreen')}>
           <Icon name="settings" size={24} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('EditProfileScreen')}>
+          <Icon name="person" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -183,16 +220,19 @@ const CustomerListService = ({ navigation }: any) => {
             <TouchableOpacity onPress={() => { setSidebarVisible(false); navigation.navigate('Home'); }}>
               <Text style={styles.sidebarItem}>Trang chủ</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setSidebarVisible(false); navigation.navigate('Favourite', { favourites }); }}>
+            <TouchableOpacity onPress={() => { setSidebarVisible(false); navigation.navigate('Favourite', { favourites, removeFavourite }); }}>
               <Text style={styles.sidebarItem}>Yêu thích</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => { setSidebarVisible(false); navigation.navigate('SettingsScreen'); }}>
               <Text style={styles.sidebarItem}>Cài đặt</Text>
             </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setSidebarVisible(false); navigation.navigate('EditProfileScreen'); }}>
+              <Text style={styles.sidebarItem}>Chỉnh sửa hồ sơ</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -200,6 +240,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  loadingIndicator: {
+    flex: 1,
+    justifyContent: 'center',
   },
   header: {
     backgroundColor: '#000',
@@ -215,6 +259,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     flex: 1,
     textAlign: 'center',
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
   },
   content: {
     flex: 1,

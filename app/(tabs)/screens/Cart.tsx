@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, Image, SafeAreaView } from 'react-native';
 
 type Service = {
   id: string;
@@ -19,7 +19,7 @@ type CartProps = {
   onClose: () => void;
   onRemove: (id: string, size: string) => void;
   onCheckout: () => void;
-  onUpdateQuantity: (id: string, size: string, newQuantity: number) => void; // Cập nhật đây
+  onUpdateQuantity: (id: string, size: string, newQuantity: number) => void;
 };
 
 const Cart: React.FC<CartProps> = ({
@@ -89,28 +89,31 @@ const Cart: React.FC<CartProps> = ({
 
   return (
     <Modal transparent={true} visible={isVisible} animationType="slide">
-      <View style={styles.modalContainer}>
+      <SafeAreaView style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Giỏ hàng</Text>
           <FlatList
             data={cartItems}
             renderItem={renderItem}
             keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={true}
             contentContainerStyle={styles.listContent}
+            style={styles.flatList}
           />
           <View style={styles.totalContainer}>
             <Text style={styles.totalText}>Tổng: {totalAmount.toFixed(2)} ₫</Text>
             <Text style={styles.totalQuantityText}>Tổng số lượng: {totalQuantity}</Text>
+          </View>
+          <View style={styles.buttonContainer}>
             <TouchableOpacity style={styles.checkoutButton} onPress={onCheckout}>
               <Text style={styles.checkoutButtonText}>Thanh toán</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+              <Text style={styles.closeButtonText}>Đóng</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>Đóng</Text>
-          </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };
@@ -189,23 +192,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 5,
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
   checkoutButton: {
     backgroundColor: '#E60026',
     padding: 10,
     borderRadius: 5,
-    alignItems: 'center',
+    flex: 1,
+    marginRight: 10, // Khoảng cách giữa nút thanh toán và nút đóng
   },
   checkoutButtonText: {
     color: 'white',
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   closeButton: {
-    marginTop: 10,
-    alignItems: 'center',
+    backgroundColor: '#ccc',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
   },
   closeButtonText: {
     color: '#333',
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   customizationsContainer: {
     marginTop: 5,
@@ -235,6 +248,9 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 20,
+  },
+  flatList: {
+    maxHeight: '60%',
   },
 });
 
